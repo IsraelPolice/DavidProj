@@ -176,11 +176,18 @@ export class CaseDetailView {
       </div>
     `;
 
+    console.log('innerHTML has been set. Container now has:', container.children.length, 'children');
+    console.log('Container innerHTML length:', container.innerHTML.length);
     this.attachEventListeners();
+    console.log('Event listeners attached');
   }
 
   attachEventListeners() {
-    document.getElementById('btn-back')?.addEventListener('click', () => {
+    console.log('attachEventListeners called');
+    const btnBack = document.getElementById('btn-back');
+    console.log('btn-back element:', btnBack);
+
+    btnBack?.addEventListener('click', () => {
       this.navigationManager.backToCases();
     });
 
