@@ -226,6 +226,13 @@ async function handleSignup() {
     console.log('Starting signup process...');
     const result = await authService.signUp(email, password, fullName, role, officeName || null);
     console.log('Signup completed:', result);
+
+    if (result.session) {
+      console.log('User has session, will auto-login');
+    } else {
+      console.log('No session, attempting to sign in...');
+      await authService.signIn(email, password);
+    }
   } catch (error) {
     console.error('Signup error:', error);
     let errorMessage = 'שגיאה בהרשמה. ';
