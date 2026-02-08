@@ -24,17 +24,17 @@ export class ChatManager {
     try {
       await this.loadMessages();
       this.attachEventListeners();
-      this.setupSubscription();
+      await this.setupSubscription();
       this.showChat();
     } catch (error) {
       console.error('Error opening chat:', error);
     }
   }
 
-  closeChat() {
+  async closeChat() {
     if (this.subscription) {
       try {
-        this.subscription.unsubscribe();
+        await this.subscription.unsubscribe();
       } catch (error) {
         console.error('Error unsubscribing from chat:', error);
       }
@@ -127,12 +127,16 @@ export class ChatManager {
     }
   }
 
-  setupSubscription() {
+  async setupSubscription() {
     if (this.subscription) {
-      this.subscription.unsubscribe();
+      try {
+        await this.subscription.unsubscribe();
+      } catch (error) {
+        console.error('Error unsubscribing previous subscription:', error);
+      }
     }
 
-    this.subscription = chatService.subscribeToMessages(this.currentCaseId, () => {
+    this.subscription = await chatService.subscribeToMessages(this.currentCaseId, () => {
       this.loadMessages();
     });
   }

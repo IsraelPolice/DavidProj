@@ -60,12 +60,14 @@ export const officeService = {
   },
 
   async addLawyerToOffice(officeId, name, email, password) {
-    const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token;
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-    if (!token) {
+    if (sessionError || !session) {
+      console.error('Session error:', sessionError);
       throw new Error('Not authenticated');
     }
+
+    const token = session.access_token;
 
     const response = await fetch(
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/add-lawyer-to-office`,
@@ -87,6 +89,7 @@ export const officeService = {
     const result = await response.json();
 
     if (!response.ok) {
+      console.error('Edge function error:', result);
       throw new Error(result.error || 'Failed to add lawyer');
     }
 

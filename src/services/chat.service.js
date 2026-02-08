@@ -44,8 +44,8 @@ export const chatService = {
     return data;
   },
 
-  async subscribeToMessages(caseId, callback) {
-    const subscription = supabase
+  subscribeToMessages(caseId, callback) {
+    const channel = supabase
       .channel(`chat:${caseId}`)
       .on(
         'postgres_changes',
@@ -59,6 +59,6 @@ export const chatService = {
       )
       .subscribe();
 
-    return subscription;
+    return channel;
   }
 };
