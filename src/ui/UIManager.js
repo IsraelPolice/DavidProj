@@ -27,20 +27,9 @@ export class UIManager {
             <li><a id="nav-cases" ${profile.role !== 'admin' ? 'class="active"' : ''} data-view="cases">
               <span class="nav-text"><i class="fas fa-folder-open"></i> תיקים ומסמכים</span>
             </a></li>
-            <li><a id="nav-tasks" data-view="tasks">
-              <span class="nav-text"><i class="fas fa-bell"></i> משימות והתראות</span>
-              <span class="badge hidden" id="task-badge">0</span>
-            </a></li>
-            <li><a id="nav-msgs" data-view="msgs">
-              <span class="nav-text"><i class="fas fa-comment-dots"></i> הודעות מלקוחות</span>
-              <span class="badge hidden" id="msg-badge">0</span>
-            </a></li>
             ${profile.role === 'admin' ? `
             <li><a id="nav-office" data-view="office">
               <span class="nav-text"><i class="fas fa-building"></i> המשרד שלי</span>
-            </a></li>
-            <li><a id="nav-mgmt" data-view="mgmt">
-              <span class="nav-text"><i class="fas fa-cogs"></i> ניהול מערכת</span>
             </a></li>
             ` : ''}
             <li><a id="nav-logout">

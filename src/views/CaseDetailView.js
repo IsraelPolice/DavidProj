@@ -5,14 +5,34 @@ export class CaseDetailView {
   }
 
   async render(caseId) {
-    await this.appState.loadCaseById(caseId);
-    const c = this.appState.currentCase;
+    try {
+      await this.appState.loadCaseById(caseId);
+      const c = this.appState.currentCase;
 
-    if (!c) {
+      if (!c) {
+        const container = document.getElementById('view-container');
+        container.innerHTML = '<div style="padding:40px; text-align:center;">תיק לא נמצא</div>';
+        return;
+      }
+
+      this.renderContent(c);
+    } catch (error) {
+      console.error('Error rendering case detail:', error);
       const container = document.getElementById('view-container');
-      container.innerHTML = '<div style="padding:40px; text-align:center;">תיק לא נמצא</div>';
-      return;
+      container.innerHTML = `
+        <div style="padding:40px; text-align:center;">
+          <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#ef4444; margin-bottom:20px;"></i>
+          <h3>שגיאה בטעינת התיק</h3>
+          <p style="color:#64748b; margin-top:10px;">${error.message}</p>
+          <button class="btn-new" onclick="window.navigationManager.backToCases()" style="margin-top:20px;">
+            חזרה לרשימת התיקים
+          </button>
+        </div>
+      `;
     }
+  }
+
+  renderContent(c) {
 
     const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
     const lawyerNames = c.case_lawyers?.map(cl => cl.lawyer.name).join(', ') || '-';
@@ -46,6 +66,26 @@ export class CaseDetailView {
         </div>
 
         <div class="details-grid">
+          <div class="left-col">
+            <div class="section-card">
+              <div class="section-title">
+                ציר זמן רפואי <i class="fas fa-heartbeat" style="color:#10b981;"></i>
+              </div>
+              <div class="timeline-container" id="medical-timeline">
+                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'medical') || [])}
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-title">
+                ציר זמן משפטי <i class="fas fa-gavel" style="color:#6366f1;"></i>
+              </div>
+              <div class="timeline-container" id="legal-timeline">
+                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'legal') || [])}
+              </div>
+            </div>
+          </div>
+
           <div class="right-col">
             <div class="section-card">
               <div class="section-title">פרטי לקוח</div>
@@ -96,26 +136,6 @@ export class CaseDetailView {
               <ul class="docs-status-list">
                 ${this.renderDocsList(c.case_documents || [])}
               </ul>
-            </div>
-          </div>
-
-          <div class="left-col">
-            <div class="section-card">
-              <div class="section-title">
-                ציר זמן רפואי <i class="fas fa-heartbeat" style="color:#10b981;"></i>
-              </div>
-              <div class="timeline-container" id="medical-timeline">
-                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'medical') || [])}
-              </div>
-            </div>
-
-            <div class="section-card">
-              <div class="section-title">
-                ציר זמן משפטי <i class="fas fa-gavel" style="color:#6366f1;"></i>
-              </div>
-              <div class="timeline-container" id="legal-timeline">
-                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'legal') || [])}
-              </div>
             </div>
           </div>
         </div>
