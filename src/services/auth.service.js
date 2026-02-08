@@ -12,7 +12,9 @@ export const authService = {
   },
 
   async signUp(email, password, fullName, role = "lawyer", officeName = null) {
-    // 1. הרשמה למערכת ה-Auth
+    console.log("Starting signup process...");
+
+    // 1. הרשמה למערכת ה-Auth של Supabase
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -30,11 +32,13 @@ export const authService = {
     }
 
     if (data.user) {
+      // --- פתרון קריטי: המתנה קלה כדי לוודא שהמשתמש נוצר בטבלאות המערכת ---
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       let officeId = null;
 
       // 2. טיפול במשרד (Office)
       if (role === "admin" && officeName) {
-        // יצירת משרד חדש עבור אדמין
         const { data: officeData, error: officeError } = await supabase
           .from("offices")
           .insert({ name: officeName })
@@ -47,7 +51,6 @@ export const authService = {
         }
         officeId = officeData.id;
       } else {
-        // שיוך למשרד קיים עבור עורך דין רגיל (לוקח את המשרד הראשון במערכת)
         const { data: existingOffice } = await supabase
           .from("offices")
           .select("id")
@@ -59,15 +62,20 @@ export const authService = {
         }
       }
 
-      // 3. עדכון הפרופיל (הפרופיל נוצר אוטומטית ע"י הטריגר ב-DB)
-      // אנחנו משתמשים ב-upsert כדי שזה יעבוד גם אם הטריגר קצת איטי
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: data.user.id,
-        user_id: data.user.id,
-        full_name: fullName,
-        role: role,
-        office_id: officeId,
-      });
+      // 3. יצירת/עדכון הפרופיל בטבלת profiles
+      // שימוש ב-upsert פותר את שגיאת ה-409 (Conflict) אם הטריגר ב-DB כבר יצר שורה
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: data.user.id,
+          user_id: data.user.id,
+          full_name: fullName,
+          role: role,
+          office_id: officeId,
+        },
+        {
+          onConflict: "id", // מעדכן אם ה-ID כבר קיים
+        },
+      );
 
       if (profileError) {
         console.error("Profile update error:", profileError);
@@ -93,7 +101,7 @@ export const authService = {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("*, offices(*)") // מושך גם את פרטי המשרד בבת אחת
+      .select("*, offices(*)")
       .eq("user_id", user.id)
       .maybeSingle();
 
