@@ -46,11 +46,19 @@ export class CaseDetailView {
   }
 
   renderContent(c) {
+    console.log('renderContent called with case:', c);
     const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+    console.log('fullName:', fullName);
+
     const lawyerNames = c.case_lawyers?.map(cl => cl.lawyer.name).join(', ') || '-';
+    console.log('lawyerNames:', lawyerNames);
+    console.log('case_lawyers raw:', c.case_lawyers);
 
     const medicalEvents = c.timeline_events?.filter(e => e.event_type === 'medical') || [];
     const legalEvents = c.timeline_events?.filter(e => e.event_type === 'legal') || [];
+    console.log('medicalEvents count:', medicalEvents.length);
+    console.log('legalEvents count:', legalEvents.length);
+
     const medicalTimelineHtml = this.renderTimeline(medicalEvents);
     const legalTimelineHtml = this.renderTimeline(legalEvents);
     const tasksHtml = this.renderTasksList(c.case_tasks || []);
@@ -58,6 +66,7 @@ export class CaseDetailView {
     const docsHtml = this.renderDocsList(c.case_documents || []);
 
     const container = document.getElementById('view-container');
+    console.log('About to set innerHTML to container:', container);
     container.innerHTML = `
       <div id="case-detail-view">
         <button class="back-btn" id="btn-back">
