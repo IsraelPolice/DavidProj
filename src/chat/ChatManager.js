@@ -33,7 +33,11 @@ export class ChatManager {
 
   closeChat() {
     if (this.subscription) {
-      this.subscription.unsubscribe();
+      try {
+        this.subscription.unsubscribe();
+      } catch (error) {
+        console.error('Error unsubscribing from chat:', error);
+      }
       this.subscription = null;
     }
     this.currentCaseId = null;

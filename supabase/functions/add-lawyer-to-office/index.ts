@@ -41,8 +41,9 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
+      console.error('Auth error:', userError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized: ' + (userError?.message || 'User not found') }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
