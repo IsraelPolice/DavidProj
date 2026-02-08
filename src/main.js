@@ -170,7 +170,19 @@ async function handleLogin() {
     await authService.signIn(email, password);
   } catch (error) {
     console.error('Login error:', error);
-    errorDiv.textContent = 'שגיאה בהתחברות. אנא בדוק את פרטי ההתחברות.';
+    let errorMessage = 'שגיאה בהתחברות. ';
+
+    if (error.message && error.message.includes('Invalid login credentials')) {
+      errorMessage = 'אימייל או סיסמה שגויים. אנא בדוק את פרטי ההתחברות.';
+    } else if (error.message && error.message.includes('rate limit')) {
+      errorMessage = 'בוצעו יותר מדי ניסיונות התחברות. אנא המתן מספר דקות ונסה שוב.';
+    } else if (error.message) {
+      errorMessage += error.message;
+    } else {
+      errorMessage += 'אנא בדוק את פרטי ההתחברות ונסה שוב.';
+    }
+
+    errorDiv.textContent = errorMessage;
     errorDiv.style.display = 'block';
 
     const btn = document.getElementById('btn-login');
@@ -218,7 +230,11 @@ async function handleSignup() {
     console.error('Signup error:', error);
     let errorMessage = 'שגיאה בהרשמה. ';
 
-    if (error.message) {
+    if (error.message && error.message.includes('rate limit')) {
+      errorMessage = 'בוצעו יותר מדי ניסיונות הרשמה. אנא המתן 5-10 דקות ונסה שוב, או השתמש באימייל אחר.';
+    } else if (error.message && error.message.includes('already registered')) {
+      errorMessage = 'כתובת האימייל כבר רשומה במערכת. נסה להתחבר במקום להירשם.';
+    } else if (error.message) {
       errorMessage += error.message;
     } else if (error.code === '23505') {
       errorMessage += 'המשתמש כבר קיים.';
