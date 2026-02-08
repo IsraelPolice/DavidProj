@@ -56,7 +56,7 @@ export class NavigationManager {
     if (viewName === 'detail' && params.caseId) {
       this.views.detail.render(params.caseId);
       if (this.chatManager) {
-        this.chatManager.openChat(params.caseId);
+        this.chatManager.setCaseId(params.caseId);
       }
     } else {
       if (this.chatManager) {

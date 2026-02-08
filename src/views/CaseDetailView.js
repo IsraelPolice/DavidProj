@@ -33,11 +33,16 @@ export class CaseDetailView {
               <span>נפתח ב: ${c.open_date || '-'}</span>
             </div>
           </div>
-          <select id="detail-status-select" class="status-select status-${c.status}">
-            <option value="open" ${c.status === 'open' ? 'selected' : ''}>פתוח</option>
-            <option value="process" ${c.status === 'process' ? 'selected' : ''}>בטיפול</option>
-            <option value="closed" ${c.status === 'closed' ? 'selected' : ''}>סגור</option>
-          </select>
+          <div style="display:flex; gap:10px; align-items: center;">
+            <button class="btn-new" id="btn-merge-docs">
+              <i class="far fa-file-pdf"></i> מיזוג והפקת חוברת
+            </button>
+            <select id="detail-status-select" class="status-select status-${c.status}">
+              <option value="open" ${c.status === 'open' ? 'selected' : ''}>פתוח</option>
+              <option value="process" ${c.status === 'process' ? 'selected' : ''}>בטיפול</option>
+              <option value="closed" ${c.status === 'closed' ? 'selected' : ''}>סגור</option>
+            </select>
+          </div>
         </div>
 
         <div class="details-grid">
@@ -114,6 +119,11 @@ export class CaseDetailView {
             </div>
           </div>
         </div>
+
+        <!-- Floating Chat Button -->
+        <button class="chat-bubble-btn" id="chat-bubble-btn">
+          <i class="fas fa-comment-dots"></i>
+        </button>
       </div>
     `;
 
@@ -129,6 +139,16 @@ export class CaseDetailView {
       const c = this.appState.currentCase;
       await this.appState.updateCase(c.id, { status: e.target.value });
       this.render(c.id);
+    });
+
+    document.getElementById('btn-merge-docs')?.addEventListener('click', () => {
+      alert('פונקציונליות מיזוג והפקת חוברת - בפיתוח');
+    });
+
+    document.getElementById('chat-bubble-btn')?.addEventListener('click', () => {
+      if (window.chatManager) {
+        window.chatManager.openChat();
+      }
     });
   }
 

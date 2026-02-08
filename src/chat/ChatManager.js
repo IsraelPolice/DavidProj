@@ -5,9 +5,18 @@ export class ChatManager {
     this.appState = appState;
     this.currentCaseId = null;
     this.subscription = null;
+    this.isOpen = false;
+  }
+
+  setCaseId(caseId) {
+    this.currentCaseId = caseId;
   }
 
   async openChat(caseId) {
+    if (!caseId) {
+      caseId = this.currentCaseId;
+    }
+
     if (!caseId) {
       console.error('No caseId provided to openChat');
       return;
@@ -25,6 +34,7 @@ export class ChatManager {
       await this.loadMessages();
       this.attachEventListeners();
       await this.setupSubscription();
+      this.isOpen = true;
       this.showChat();
     } catch (error) {
       console.error('Error opening chat:', error);
@@ -40,7 +50,7 @@ export class ChatManager {
       }
       this.subscription = null;
     }
-    this.currentCaseId = null;
+    this.isOpen = false;
     this.hideChat();
   }
 
