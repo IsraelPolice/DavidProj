@@ -1,0 +1,242 @@
+export class CaseDetailView {
+  constructor(appState, navigationManager) {
+    this.appState = appState;
+    this.navigationManager = navigationManager;
+  }
+
+  async render(caseId) {
+    await this.appState.loadCaseById(caseId);
+    const c = this.appState.currentCase;
+
+    if (!c) {
+      const container = document.getElementById('view-container');
+      container.innerHTML = '<div style="padding:40px; text-align:center;">תיק לא נמצא</div>';
+      return;
+    }
+
+    const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+    const lawyerNames = c.case_lawyers?.map(cl => cl.lawyer.name).join(', ') || '-';
+
+    const container = document.getElementById('view-container');
+    container.innerHTML = `
+      <div id="case-detail-view">
+        <button class="back-btn" id="btn-back">
+          <i class="fas fa-arrow-right"></i> חזרה לרשימה
+        </button>
+
+        <div class="top-bar">
+          <div>
+            <h1 class="page-title">${fullName}</h1>
+            <div class="case-meta-info">
+              <span>תיק משרד: ${c.case_num}</span>
+              <span>ת.א: ${c.ta_num || '-'}</span>
+              <span>נפתח ב: ${c.open_date || '-'}</span>
+            </div>
+          </div>
+          <select id="detail-status-select" class="status-select status-${c.status}">
+            <option value="open" ${c.status === 'open' ? 'selected' : ''}>פתוח</option>
+            <option value="process" ${c.status === 'process' ? 'selected' : ''}>בטיפול</option>
+            <option value="closed" ${c.status === 'closed' ? 'selected' : ''}>סגור</option>
+          </select>
+        </div>
+
+        <div class="details-grid">
+          <div class="right-col">
+            <div class="section-card">
+              <div class="section-title">פרטי לקוח</div>
+              <div class="info-row">
+                <span class="info-label">ת.ז:</span>
+                <span class="info-val">${c.tz || '-'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">קופת חולים:</span>
+                <span class="info-val">${c.hmo || '-'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">טלפון:</span>
+                <span class="info-val">${c.phone || '-'}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">כתובת:</span>
+                <span class="info-val">${c.street || ''} ${c.city || ''}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">עו"ד מטפל:</span>
+                <span class="info-val">${lawyerNames}</span>
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-title">
+                משימות ומעקב
+                <span class="counter-badge">${c.case_tasks?.filter(t => !t.done).length || 0}</span>
+              </div>
+              <ul class="task-list" id="general-tasks-list">
+                ${this.renderTasksList(c.case_tasks || [])}
+              </ul>
+            </div>
+
+            <div class="section-card">
+              <div class="section-title">
+                תיעוד שיחות
+                <span class="counter-badge">${c.case_calls?.length || 0}</span>
+              </div>
+              <ul class="call-log-list" id="call-log-list">
+                ${this.renderCallsList(c.case_calls || [])}
+              </ul>
+            </div>
+
+            <div class="section-card">
+              <div class="section-title">סטטוס מסמכי ייצוג</div>
+              <ul class="docs-status-list">
+                ${this.renderDocsList(c.case_documents || [])}
+              </ul>
+            </div>
+          </div>
+
+          <div class="left-col">
+            <div class="section-card">
+              <div class="section-title">
+                ציר זמן רפואי <i class="fas fa-heartbeat" style="color:#10b981;"></i>
+              </div>
+              <div class="timeline-container" id="medical-timeline">
+                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'medical') || [])}
+              </div>
+            </div>
+
+            <div class="section-card">
+              <div class="section-title">
+                ציר זמן משפטי <i class="fas fa-gavel" style="color:#6366f1;"></i>
+              </div>
+              <div class="timeline-container" id="legal-timeline">
+                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'legal') || [])}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.attachEventListeners();
+  }
+
+  attachEventListeners() {
+    document.getElementById('btn-back')?.addEventListener('click', () => {
+      this.navigationManager.backToCases();
+    });
+
+    document.getElementById('detail-status-select')?.addEventListener('change', async (e) => {
+      const c = this.appState.currentCase;
+      await this.appState.updateCase(c.id, { status: e.target.value });
+      this.render(c.id);
+    });
+  }
+
+  renderTasksList(tasks) {
+    if (tasks.length === 0) {
+      return '<li style="padding:10px; color:#999;">אין משימות</li>';
+    }
+
+    return tasks.map(t => {
+      const urgencyClass = `task-urgent-${t.urgency}`;
+      const doneClass = t.done ? 'task-done' : '';
+
+      return `
+        <li class="task-item ${urgencyClass} ${doneClass}">
+          <div class="task-left">
+            <input type="checkbox" class="task-checkbox" ${t.done ? 'checked' : ''} disabled>
+            <div class="task-content">
+              <span class="task-text">${t.text}</span>
+              ${t.deadline ? `
+                <div class="task-details-row">
+                  <span class="task-deadline">
+                    <i class="far fa-calendar"></i>
+                    ${new Date(t.deadline).toLocaleDateString('he-IL')}
+                  </span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </li>
+      `;
+    }).join('');
+  }
+
+  renderCallsList(calls) {
+    if (calls.length === 0) {
+      return '<li style="padding:10px; color:#999;">אין שיחות מתועדות</li>';
+    }
+
+    return calls.slice(0, 5).map(call => `
+      <li class="call-log-item">
+        <div class="call-meta">${call.call_date}</div>
+        <div class="call-content">${call.content}</div>
+      </li>
+    `).join('');
+  }
+
+  renderDocsList(docs) {
+    if (docs.length === 0) {
+      return '<li style="padding:10px; color:#999;">אין מסמכים</li>';
+    }
+
+    return docs.map(doc => {
+      let badgeClass = 'badge-none';
+      let badgeText = 'טרם נשלח';
+
+      if (doc.status === 'sent') {
+        badgeClass = 'badge-sent';
+        badgeText = 'נשלח';
+      } else if (doc.status === 'signed') {
+        badgeClass = 'badge-signed';
+        badgeText = 'חתום';
+      }
+
+      return `
+        <li class="doc-status-item">
+          <span class="doc-name">${doc.doc_name}</span>
+          <span class="doc-badge ${badgeClass}">${badgeText}</span>
+        </li>
+      `;
+    }).join('');
+  }
+
+  renderTimeline(events) {
+    if (events.length === 0) {
+      return '<div style="padding:20px; color:#999; text-align:center;">אין אירועים</div>';
+    }
+
+    const sorted = [...events].sort((a, b) =>
+      new Date(a.event_date) - new Date(b.event_date)
+    );
+
+    return sorted.map(event => {
+      const purpleClass = event.is_template ? 'purple-theme' : '';
+
+      return `
+        <div class="timeline-item ${purpleClass}">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">
+            <span>${new Date(event.event_date).toLocaleDateString('he-IL')}</span>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">${event.title}</div>
+            ${event.description ? `<div class="timeline-desc">${event.description}</div>` : ''}
+            ${event.event_files && event.event_files.length > 0 ? `
+              <div class="timeline-actions">
+                <div class="attached-files">
+                  ${event.event_files.map(f => `
+                    <div class="file-item-modern">
+                      <i class="far fa-file file-icon"></i>
+                      <span class="file-name">${f.file_name}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
