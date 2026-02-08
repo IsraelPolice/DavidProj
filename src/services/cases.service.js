@@ -19,6 +19,7 @@ export const casesService = {
   },
 
   async getCaseById(id) {
+    console.log('casesService.getCaseById called with id:', id);
     const { data, error } = await supabase
       .from('cases')
       .select(`
@@ -33,8 +34,9 @@ export const casesService = {
         case_templates(template:templates(*, template_steps(*)))
       `)
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
+    console.log('casesService.getCaseById result:', { data, error });
     if (error) throw error;
     return data;
   },

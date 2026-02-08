@@ -5,20 +5,33 @@ export class CaseDetailView {
   }
 
   async render(caseId) {
+    console.log('CaseDetailView.render called with caseId:', caseId);
+    const container = document.getElementById('view-container');
+
+    if (!container) {
+      console.error('view-container not found!');
+      return;
+    }
+
+    container.innerHTML = '<div style="padding:40px; text-align:center;">טוען נתוני תיק...</div>';
+
     try {
+      console.log('Loading case data...');
       await this.appState.loadCaseById(caseId);
       const c = this.appState.currentCase;
+      console.log('Loaded case:', c);
 
       if (!c) {
-        const container = document.getElementById('view-container');
+        console.warn('Case not found');
         container.innerHTML = '<div style="padding:40px; text-align:center;">תיק לא נמצא</div>';
         return;
       }
 
+      console.log('Rendering case content...');
       this.renderContent(c);
+      console.log('Case rendered successfully');
     } catch (error) {
       console.error('Error rendering case detail:', error);
-      const container = document.getElementById('view-container');
       container.innerHTML = `
         <div style="padding:40px; text-align:center;">
           <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#ef4444; margin-bottom:20px;"></i>

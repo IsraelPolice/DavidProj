@@ -44,6 +44,7 @@ export class NavigationManager {
   }
 
   navigateTo(viewName, params = {}) {
+    console.log('NavigationManager.navigateTo called:', viewName, params);
     document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
 
     const activeNav = document.querySelector(`.nav-links a[data-view="${viewName}"]`);
@@ -52,8 +53,10 @@ export class NavigationManager {
     }
 
     const container = document.getElementById('view-container');
+    console.log('view-container element:', container);
 
     if (viewName === 'detail' && params.caseId) {
+      console.log('Rendering case detail for caseId:', params.caseId);
       this.views.detail.render(params.caseId);
       if (this.chatManager) {
         this.chatManager.setCaseId(params.caseId);
@@ -63,6 +66,7 @@ export class NavigationManager {
         this.chatManager.closeChat();
       }
       if (this.views[viewName]) {
+        console.log('Rendering view:', viewName);
         this.views[viewName].render();
       }
     }
@@ -71,6 +75,7 @@ export class NavigationManager {
   }
 
   openCase(caseId) {
+    console.log('NavigationManager.openCase called with caseId:', caseId);
     this.navigateTo('detail', { caseId });
   }
 
