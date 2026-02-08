@@ -1,14 +1,13 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // הבסיס חייב להיות שם ה-Repository ב-GitHub עם סלאשים משני הצדדים
+  // הבסיס הוא שם ה-Repository שלך
   base: "/DavidProj/",
   root: ".",
   publicDir: "public",
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    // מבטיח שהנתיבים לקבצי ה-JS וה-CSS יהיו יחסיים
     assetsDir: "assets",
   },
   server: {
