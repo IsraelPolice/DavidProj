@@ -171,21 +171,50 @@ export class DashboardView {
     }
 
     container.innerHTML = urgentTasks.slice(0, 5).map(task => `
-      <div class="urgent-task-item" data-case-id="${task.caseId}">
+      <div class="urgent-task-item" data-task-id="${task.id}" data-case-id="${task.caseId}">
         <div class="urgent-task-header">
           <span class="urgent-task-client">${task.clientName}</span>
           ${task.deadline ? `<span class="urgent-task-date">${new Date(task.deadline).toLocaleDateString('he-IL')}</span>` : ''}
         </div>
         <div class="urgent-task-text">${task.text}</div>
+        <div class="urgent-task-actions">
+          <button class="btn-task-done" data-task-id="${task.id}">
+            <i class="fas fa-check"></i> סמן כבוצע
+          </button>
+          <button class="btn-task-view" data-case-id="${task.caseId}">
+            <i class="fas fa-eye"></i> צפה בתיק
+          </button>
+        </div>
       </div>
     `).join('');
 
-    document.querySelectorAll('.urgent-task-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const caseId = item.getAttribute('data-case-id');
+    document.querySelectorAll('.btn-task-done').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const taskId = btn.getAttribute('data-task-id');
+        await this.markTaskDone(taskId);
+      });
+    });
+
+    document.querySelectorAll('.btn-task-view').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const caseId = btn.getAttribute('data-case-id');
         this.navigationManager.openCase(caseId);
       });
     });
+  }
+
+  async markTaskDone(taskId) {
+    try {
+      const { tasksService } = await import('../services/tasks.service.js');
+      await tasksService.updateTask(taskId, { done: true });
+      await this.appState.loadCases();
+      await this.renderDashboard();
+    } catch (error) {
+      console.error('Failed to mark task as done:', error);
+      alert('שגיאה בעדכון המשימה');
+    }
   }
 
   renderRecentActivity() {

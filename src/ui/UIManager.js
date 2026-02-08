@@ -36,6 +36,9 @@ export class UIManager {
               <span class="badge hidden" id="msg-badge">0</span>
             </a></li>
             ${profile.role === 'admin' ? `
+            <li><a id="nav-office" data-view="office">
+              <span class="nav-text"><i class="fas fa-building"></i> המשרד שלי</span>
+            </a></li>
             <li><a id="nav-mgmt" data-view="mgmt">
               <span class="nav-text"><i class="fas fa-cogs"></i> ניהול מערכת</span>
             </a></li>

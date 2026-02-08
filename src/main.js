@@ -13,10 +13,12 @@ import { templatesService } from './services/templates.service.js';
 import { AppState } from './state/AppState.js';
 import { UIManager } from './ui/UIManager.js';
 import { NavigationManager } from './navigation/NavigationManager.js';
+import { ChatManager } from './chat/ChatManager.js';
 
 let appState;
 let uiManager;
 let navigationManager;
+let chatManager;
 
 async function initializeApp() {
   try {
@@ -261,7 +263,8 @@ async function handleSignup() {
 async function startMainApp(profile) {
   appState = new AppState();
   uiManager = new UIManager(appState);
-  navigationManager = new NavigationManager(appState, uiManager);
+  chatManager = new ChatManager(appState);
+  navigationManager = new NavigationManager(appState, uiManager, chatManager);
 
   await appState.loadInitialData();
 
@@ -271,6 +274,7 @@ async function startMainApp(profile) {
   window.appState = appState;
   window.uiManager = uiManager;
   window.navigationManager = navigationManager;
+  window.chatManager = chatManager;
   window.currentProfile = profile;
 }
 

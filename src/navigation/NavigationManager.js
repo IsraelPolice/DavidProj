@@ -5,17 +5,20 @@ import { MessagesView } from '../views/MessagesView.js';
 import { ManagementView } from '../views/ManagementView.js';
 import { CaseDetailView } from '../views/CaseDetailView.js';
 import { DashboardView } from '../views/DashboardView.js';
+import { OfficeView } from '../views/OfficeView.js';
 
 export class NavigationManager {
-  constructor(appState, uiManager) {
+  constructor(appState, uiManager, chatManager) {
     this.appState = appState;
     this.uiManager = uiManager;
+    this.chatManager = chatManager;
     this.views = {
       dashboard: new DashboardView(appState, this),
       cases: new CasesView(appState, this),
       tasks: new TasksView(appState, this),
       msgs: new MessagesView(appState, this),
       mgmt: new ManagementView(appState, this),
+      office: new OfficeView(appState, this),
       detail: new CaseDetailView(appState, this)
     };
   }
@@ -49,13 +52,16 @@ export class NavigationManager {
     }
 
     const container = document.getElementById('view-container');
-    const chatWindow = document.getElementById('chat-window');
 
     if (viewName === 'detail' && params.caseId) {
-      if (chatWindow) chatWindow.style.display = 'flex';
       this.views.detail.render(params.caseId);
+      if (this.chatManager) {
+        this.chatManager.openChat(params.caseId);
+      }
     } else {
-      if (chatWindow) chatWindow.style.display = 'none';
+      if (this.chatManager) {
+        this.chatManager.closeChat();
+      }
       if (this.views[viewName]) {
         this.views[viewName].render();
       }

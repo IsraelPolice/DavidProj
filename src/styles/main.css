@@ -340,6 +340,28 @@
         .activity-time { font-size: 12px; color: var(--text-gray); }
         .activity-text { font-size: 13px; color: var(--text-gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+        .urgent-task-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-task-done, .btn-task-view { padding: 6px 12px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
+        .btn-task-done { background: #10b981; color: white; }
+        .btn-task-done:hover { background: #059669; }
+        .btn-task-view { background: #3b82f6; color: white; }
+        .btn-task-view:hover { background: #2563eb; }
+
+        .msg-bubble { padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; max-width: 75%; position: relative; }
+        .msg-client { background: #dbeafe; color: var(--text-dark); margin-left: auto; border-bottom-right-radius: 4px; }
+        .msg-lawyer { background: #f3f4f6; color: var(--text-dark); margin-right: auto; border-bottom-left-radius: 4px; }
+        .msg-text { font-size: 14px; line-height: 1.5; margin-bottom: 4px; }
+        .msg-time { font-size: 11px; color: var(--text-gray); text-align: left; }
+
+        .lawyers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .lawyer-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: all 0.2s; }
+        .lawyer-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .lawyer-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .lawyer-avatar-large { width: 60px; height: 60px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 24px; color: white; }
+        .lawyer-info h3 { font-size: 16px; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
+        .lawyer-stats { display: flex; gap: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .lawyer-stats .stat-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-gray); }
+
         @media (max-width: 768px) {
             #main-layout { flex-direction: column; }
             .sidebar { width: 100%; height: auto; padding: 10px; flex-direction: row; justify-content: space-between; }
