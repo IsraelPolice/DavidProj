@@ -33,9 +33,16 @@ export class CaseDetailView {
   }
 
   renderContent(c) {
-
     const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
     const lawyerNames = c.case_lawyers?.map(cl => cl.lawyer.name).join(', ') || '-';
+
+    const medicalEvents = c.timeline_events?.filter(e => e.event_type === 'medical') || [];
+    const legalEvents = c.timeline_events?.filter(e => e.event_type === 'legal') || [];
+    const medicalTimelineHtml = this.renderTimeline(medicalEvents);
+    const legalTimelineHtml = this.renderTimeline(legalEvents);
+    const tasksHtml = this.renderTasksList(c.case_tasks || []);
+    const callsHtml = this.renderCallsList(c.case_calls || []);
+    const docsHtml = this.renderDocsList(c.case_documents || []);
 
     const container = document.getElementById('view-container');
     container.innerHTML = `
@@ -72,7 +79,7 @@ export class CaseDetailView {
                 ציר זמן רפואי <i class="fas fa-heartbeat" style="color:#10b981;"></i>
               </div>
               <div class="timeline-container" id="medical-timeline">
-                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'medical') || [])}
+                ${medicalTimelineHtml}
               </div>
             </div>
 
@@ -81,7 +88,7 @@ export class CaseDetailView {
                 ציר זמן משפטי <i class="fas fa-gavel" style="color:#6366f1;"></i>
               </div>
               <div class="timeline-container" id="legal-timeline">
-                ${this.renderTimeline(c.timeline_events?.filter(e => e.event_type === 'legal') || [])}
+                ${legalTimelineHtml}
               </div>
             </div>
           </div>
@@ -117,7 +124,7 @@ export class CaseDetailView {
                 <span class="counter-badge">${c.case_tasks?.filter(t => !t.done).length || 0}</span>
               </div>
               <ul class="task-list" id="general-tasks-list">
-                ${this.renderTasksList(c.case_tasks || [])}
+                ${tasksHtml}
               </ul>
             </div>
 
@@ -127,14 +134,14 @@ export class CaseDetailView {
                 <span class="counter-badge">${c.case_calls?.length || 0}</span>
               </div>
               <ul class="call-log-list" id="call-log-list">
-                ${this.renderCallsList(c.case_calls || [])}
+                ${callsHtml}
               </ul>
             </div>
 
             <div class="section-card">
               <div class="section-title">סטטוס מסמכי ייצוג</div>
               <ul class="docs-status-list">
-                ${this.renderDocsList(c.case_documents || [])}
+                ${docsHtml}
               </ul>
             </div>
           </div>
@@ -173,110 +180,159 @@ export class CaseDetailView {
   }
 
   renderTasksList(tasks) {
-    if (tasks.length === 0) {
+    if (!tasks || tasks.length === 0) {
       return '<li style="padding:10px; color:#999;">אין משימות</li>';
     }
 
-    return tasks.map(t => {
-      const urgencyClass = `task-urgent-${t.urgency}`;
-      const doneClass = t.done ? 'task-done' : '';
+    try {
+      return tasks.map(t => {
+        const urgency = t.urgency || 'low';
+        const urgencyClass = `task-urgent-${urgency}`;
+        const doneClass = t.done ? 'task-done' : '';
+        const text = t.text || 'משימה ללא תיאור';
 
-      return `
-        <li class="task-item ${urgencyClass} ${doneClass}">
-          <div class="task-left">
-            <input type="checkbox" class="task-checkbox" ${t.done ? 'checked' : ''} disabled>
-            <div class="task-content">
-              <span class="task-text">${t.text}</span>
-              ${t.deadline ? `
-                <div class="task-details-row">
-                  <span class="task-deadline">
-                    <i class="far fa-calendar"></i>
-                    ${new Date(t.deadline).toLocaleDateString('he-IL')}
-                  </span>
-                </div>
-              ` : ''}
+        let deadlineHtml = '';
+        if (t.deadline) {
+          try {
+            const deadlineDate = new Date(t.deadline).toLocaleDateString('he-IL');
+            deadlineHtml = `
+              <div class="task-details-row">
+                <span class="task-deadline">
+                  <i class="far fa-calendar"></i>
+                  ${deadlineDate}
+                </span>
+              </div>
+            `;
+          } catch (e) {
+            console.error('Error parsing deadline:', e);
+          }
+        }
+
+        return `
+          <li class="task-item ${urgencyClass} ${doneClass}">
+            <div class="task-left">
+              <input type="checkbox" class="task-checkbox" ${t.done ? 'checked' : ''} disabled>
+              <div class="task-content">
+                <span class="task-text">${text}</span>
+                ${deadlineHtml}
+              </div>
             </div>
-          </div>
-        </li>
-      `;
-    }).join('');
+          </li>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error rendering tasks:', error);
+      return '<li style="padding:10px; color:#ef4444;">שגיאה בטעינת משימות</li>';
+    }
   }
 
   renderCallsList(calls) {
-    if (calls.length === 0) {
+    if (!calls || calls.length === 0) {
       return '<li style="padding:10px; color:#999;">אין שיחות מתועדות</li>';
     }
 
-    return calls.slice(0, 5).map(call => `
-      <li class="call-log-item">
-        <div class="call-meta">${call.call_date}</div>
-        <div class="call-content">${call.content}</div>
-      </li>
-    `).join('');
+    try {
+      return calls.slice(0, 5).map(call => {
+        const callDate = call.call_date || '-';
+        const content = call.content || 'אין תוכן';
+
+        return `
+          <li class="call-log-item">
+            <div class="call-meta">${callDate}</div>
+            <div class="call-content">${content}</div>
+          </li>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error rendering calls:', error);
+      return '<li style="padding:10px; color:#ef4444;">שגיאה בטעינת שיחות</li>';
+    }
   }
 
   renderDocsList(docs) {
-    if (docs.length === 0) {
+    if (!docs || docs.length === 0) {
       return '<li style="padding:10px; color:#999;">אין מסמכים</li>';
     }
 
-    return docs.map(doc => {
-      let badgeClass = 'badge-none';
-      let badgeText = 'טרם נשלח';
+    try {
+      return docs.map(doc => {
+        let badgeClass = 'badge-none';
+        let badgeText = 'טרם נשלח';
 
-      if (doc.status === 'sent') {
-        badgeClass = 'badge-sent';
-        badgeText = 'נשלח';
-      } else if (doc.status === 'signed') {
-        badgeClass = 'badge-signed';
-        badgeText = 'חתום';
-      }
+        if (doc.status === 'sent') {
+          badgeClass = 'badge-sent';
+          badgeText = 'נשלח';
+        } else if (doc.status === 'signed') {
+          badgeClass = 'badge-signed';
+          badgeText = 'חתום';
+        }
 
-      return `
-        <li class="doc-status-item">
-          <span class="doc-name">${doc.doc_name}</span>
-          <span class="doc-badge ${badgeClass}">${badgeText}</span>
-        </li>
-      `;
-    }).join('');
+        const docName = doc.doc_name || 'מסמך ללא שם';
+
+        return `
+          <li class="doc-status-item">
+            <span class="doc-name">${docName}</span>
+            <span class="doc-badge ${badgeClass}">${badgeText}</span>
+          </li>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error rendering docs:', error);
+      return '<li style="padding:10px; color:#ef4444;">שגיאה בטעינת מסמכים</li>';
+    }
   }
 
   renderTimeline(events) {
-    if (events.length === 0) {
+    if (!events || events.length === 0) {
       return '<div style="padding:20px; color:#999; text-align:center;">אין אירועים</div>';
     }
 
-    const sorted = [...events].sort((a, b) =>
-      new Date(a.event_date) - new Date(b.event_date)
-    );
+    try {
+      const sorted = [...events].sort((a, b) =>
+        new Date(a.event_date) - new Date(b.event_date)
+      );
 
-    return sorted.map(event => {
-      const purpleClass = event.is_template ? 'purple-theme' : '';
+      return sorted.map(event => {
+        const purpleClass = event.is_template ? 'purple-theme' : '';
+        const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('he-IL') : '-';
+        const title = event.title || 'אין כותרת';
+        const description = event.description || '';
 
-      return `
-        <div class="timeline-item ${purpleClass}">
-          <div class="timeline-dot"></div>
-          <div class="timeline-date">
-            <span>${new Date(event.event_date).toLocaleDateString('he-IL')}</span>
-          </div>
-          <div class="timeline-content">
-            <div class="timeline-title">${event.title}</div>
-            ${event.description ? `<div class="timeline-desc">${event.description}</div>` : ''}
-            ${event.event_files && event.event_files.length > 0 ? `
-              <div class="timeline-actions">
-                <div class="attached-files">
-                  ${event.event_files.map(f => `
-                    <div class="file-item-modern">
-                      <i class="far fa-file file-icon"></i>
-                      <span class="file-name">${f.file_name}</span>
-                    </div>
-                  `).join('')}
-                </div>
+        let filesHtml = '';
+        if (event.event_files && Array.isArray(event.event_files) && event.event_files.length > 0) {
+          const filesItems = event.event_files.map(f => `
+            <div class="file-item-modern">
+              <i class="far fa-file file-icon"></i>
+              <span class="file-name">${f.file_name || 'קובץ ללא שם'}</span>
+            </div>
+          `).join('');
+
+          filesHtml = `
+            <div class="timeline-actions">
+              <div class="attached-files">
+                ${filesItems}
               </div>
-            ` : ''}
+            </div>
+          `;
+        }
+
+        return `
+          <div class="timeline-item ${purpleClass}">
+            <div class="timeline-dot"></div>
+            <div class="timeline-date">
+              <span>${eventDate}</span>
+            </div>
+            <div class="timeline-content">
+              <div class="timeline-title">${title}</div>
+              ${description ? `<div class="timeline-desc">${description}</div>` : ''}
+              ${filesHtml}
+            </div>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error rendering timeline:', error);
+      return '<div style="padding:20px; color:#ef4444; text-align:center;">שגיאה בטעינת ציר הזמן</div>';
+    }
   }
 }
