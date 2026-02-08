@@ -8,11 +8,27 @@ export class ChatManager {
   }
 
   async openChat(caseId) {
+    if (!caseId) {
+      console.error('No caseId provided to openChat');
+      return;
+    }
+
     this.currentCaseId = caseId;
-    await this.loadMessages();
-    this.attachEventListeners();
-    this.setupSubscription();
-    this.showChat();
+
+    const chatWindow = document.getElementById('chat-window');
+    if (!chatWindow) {
+      console.error('Chat window not found in DOM');
+      return;
+    }
+
+    try {
+      await this.loadMessages();
+      this.attachEventListeners();
+      this.setupSubscription();
+      this.showChat();
+    } catch (error) {
+      console.error('Error opening chat:', error);
+    }
   }
 
   closeChat() {

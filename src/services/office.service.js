@@ -32,17 +32,6 @@ export const officeService = {
     return data;
   },
 
-  async addLawyerToOffice(lawyerId, officeId) {
-    const { error } = await supabase
-      .from('office_members')
-      .insert({
-        office_id: officeId,
-        lawyer_id: lawyerId
-      });
-
-    if (error) throw error;
-  },
-
   async removeLawyerFromOffice(lawyerId, officeId) {
     const { error } = await supabase
       .from('office_members')
@@ -71,53 +60,36 @@ export const officeService = {
   },
 
   async addLawyerToOffice(officeId, name, email, password) {
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true
-    });
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
 
-    if (authError) throw authError;
-
-    const { data: lawyer, error: lawyerError } = await supabase
-      .from('lawyers')
-      .insert({ name })
-      .select()
-      .single();
-
-    if (lawyerError) {
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      throw lawyerError;
+    if (!token) {
+      throw new Error('Not authenticated');
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        full_name: name,
-        role: 'lawyer',
-        office_id: officeId
-      })
-      .eq('user_id', authData.user.id);
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/add-lawyer-to-office`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          officeId,
+          name,
+          email,
+          password
+        })
+      }
+    );
 
-    if (profileError) {
-      await supabase.from('lawyers').delete().eq('id', lawyer.id);
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      throw profileError;
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to add lawyer');
     }
 
-    const { error: memberError } = await supabase
-      .from('office_members')
-      .insert({
-        office_id: officeId,
-        lawyer_id: lawyer.id
-      });
-
-    if (memberError) {
-      await supabase.from('lawyers').delete().eq('id', lawyer.id);
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      throw memberError;
-    }
-
-    return { lawyer, user: authData.user };
+    return result;
   }
 };
