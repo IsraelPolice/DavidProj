@@ -1,19 +1,24 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from "../lib/supabase.js";
 
 export const officeService = {
   async getOfficeInfo() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('office_id, role')
-      .eq('id', (await supabase.auth.getUser()).data.user.id)
+      .from("profiles")
+      .select("office_id, role")
+      .eq("id", user.id)
       .single();
 
     if (!profile?.office_id) return null;
 
     const { data, error } = await supabase
-      .from('offices')
-      .select('*')
-      .eq('id', profile.office_id)
+      .from("offices")
+      .select("*")
+      .eq("id", profile.office_id)
       .single();
 
     if (error) throw error;
@@ -22,9 +27,9 @@ export const officeService = {
 
   async updateOffice(officeId, updates) {
     const { data, error } = await supabase
-      .from('offices')
+      .from("offices")
       .update(updates)
-      .eq('id', officeId)
+      .eq("id", officeId)
       .select()
       .single();
 
@@ -34,65 +39,66 @@ export const officeService = {
 
   async removeLawyerFromOffice(lawyerId, officeId) {
     const { error } = await supabase
-      .from('office_members')
+      .from("office_members")
       .delete()
-      .eq('office_id', officeId)
-      .eq('lawyer_id', lawyerId);
+      .eq("office_id", officeId)
+      .eq("lawyer_id", lawyerId);
 
     if (error) throw error;
   },
 
   async getOfficeWithMembers(officeId) {
     const { data, error } = await supabase
-      .from('offices')
-      .select(`
+      .from("offices")
+      .select(
+        `
         *,
         members:office_members(
           id,
           lawyer:lawyers(*)
         )
-      `)
-      .eq('id', officeId)
+      `,
+      )
+      .eq("id", officeId)
       .single();
 
     if (error) throw error;
     return data;
   },
 
+  // גרסה מתוקנת ללא Edge Function למניעת שגיאות CORS
   async addLawyerToOffice(officeId, name, email, password) {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log("Adding lawyer to office:", { officeId, name, email });
 
-    if (sessionError || !session) {
-      console.error('Session error:', sessionError);
-      throw new Error('Not authenticated');
+    // 1. יצירת רשומת עורך הדין בטבלת ה-Lawyers
+    const { data: lawyer, error: lawyerError } = await supabase
+      .from("lawyers")
+      .insert({
+        name,
+        email,
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (lawyerError) {
+      console.error("Error creating lawyer record:", lawyerError);
+      throw lawyerError;
     }
 
-    const token = session.access_token;
+    // 2. יצירת הקשר בין עורך הדין למשרד בטבלת office_members
+    const { error: memberError } = await supabase
+      .from("office_members")
+      .insert({
+        office_id: officeId,
+        lawyer_id: lawyer.id,
+      });
 
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/add-lawyer-to-office`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          officeId,
-          name,
-          email,
-          password
-        })
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      console.error('Edge function error:', result);
-      throw new Error(result.error || 'Failed to add lawyer');
+    if (memberError) {
+      console.error("Error linking lawyer to office:", memberError);
+      throw memberError;
     }
 
-    return result;
-  }
+    return { success: true, lawyer };
+  },
 };
