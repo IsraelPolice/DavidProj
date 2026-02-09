@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase.js";
 
 export const casesService = {
-  // שליפת כל התיקים
+  // שליפת כל התיקים עם מידע בסיסי לתצוגת רשימה
   async getAllCases() {
     const { data, error } = await supabase
       .from("cases")
@@ -9,10 +9,7 @@ export const casesService = {
         `
         *,
         case_type:case_types(name),
-        case_lawyers(lawyer:lawyers(name)),
-        case_tasks(*),
-        case_documents(*),
-        chat_messages(*)
+        case_documents(*)
       `,
       )
       .order("created_at", { ascending: false });
@@ -24,9 +21,8 @@ export const casesService = {
     return data || [];
   },
 
-  // שליפת תיק ספציפי - כאן היה התיקון (הסרת case_templates)
+  // שליפת תיק ספציפי עם כל הנתונים הנלווים
   async getCaseById(id) {
-    console.log("casesService.getCaseById called with id:", id);
     const { data, error } = await supabase
       .from("cases")
       .select(
@@ -36,7 +32,9 @@ export const casesService = {
         case_lawyers(lawyer:lawyers(*)),
         case_tasks(*),
         case_documents(*),
-        chat_messages(*)
+        chat_messages(*),
+        timeline_events(*),
+        case_calls(*)
       `,
       )
       .eq("id", id)
@@ -65,56 +63,49 @@ export const casesService = {
         last_name: caseData.lastName,
         tz: caseData.tz,
         phone: caseData.phone,
-        city: caseData.city,
-        street: caseData.street,
-        hmo: caseData.hmo,
         case_type_id: caseData.caseTypeId,
         status: caseData.status || "open",
         docs_deadline: caseData.docsDeadline,
-        open_date: caseData.openDate || new Date().toISOString().split("T")[0],
+        open_date: caseData.openDate,
       })
       .select()
       .single();
 
-    if (caseError) {
-      console.error("Error in createCase:", caseError);
-      throw caseError;
-    }
+    if (caseError) throw caseError;
 
-    // הוספת עורכי דין
+    // הוספת עורכי דין לתיק
     if (caseData.lawyerIds && caseData.lawyerIds.length > 0) {
       const lawyerInserts = caseData.lawyerIds.map((lawyerId) => ({
         case_id: caseResult.id,
         lawyer_id: lawyerId,
       }));
-
-      const { error: lawyersError } = await supabase
-        .from("case_lawyers")
-        .insert(lawyerInserts);
-
-      if (lawyersError) console.error("Error adding lawyers:", lawyersError);
+      await supabase.from("case_lawyers").insert(lawyerInserts);
     }
 
-    // יצירת מסמכי ברירת מחדל
+    // יצירת מסמכי חובה ראשוניים
     const defaultDocs = [
-      {
-        case_id: caseResult.id,
-        doc_name: "ייפוי כוח",
-        status: "none",
-        name: "ייפוי כוח",
-      },
-      {
-        case_id: caseResult.id,
-        doc_name: "הסכם שכר טרחה",
-        status: "none",
-        name: "הסכם שכר טרחה",
-      },
-      { case_id: caseResult.id, doc_name: "וסר", status: "none", name: "וסר" },
+      { case_id: caseResult.id, doc_name: "ייפוי כוח", status: "none" },
+      { case_id: caseResult.id, doc_name: "הסכם שכר טרחה", status: "none" },
+      { case_id: caseResult.id, doc_name: "ויתור סודיות", status: "none" },
     ];
-
     await supabase.from("case_documents").insert(defaultDocs);
 
     return caseResult;
+  },
+
+  async getNextCaseNumber() {
+    const { data, error } = await supabase
+      .from("cases")
+      .select("case_num")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) return "55001";
+    if (data && data.length > 0) {
+      const lastNum = parseInt(data[0].case_num);
+      return isNaN(lastNum) ? "55001" : String(lastNum + 1);
+    }
+    return "55001";
   },
 
   async updateCase(id, updates) {
@@ -124,41 +115,7 @@ export const casesService = {
       .eq("id", id)
       .select()
       .single();
-
     if (error) throw error;
     return data;
-  },
-
-  async deleteCase(id) {
-    const { error } = await supabase.from("cases").delete().eq("id", id);
-    if (error) throw error;
-  },
-
-  async getNextCaseNumber() {
-    const { data, error } = await supabase
-      .from("cases")
-      .select("case_num")
-      .order("case_num", { ascending: false })
-      .limit(1);
-
-    if (error) throw error;
-
-    if (data && data.length > 0 && data[0].case_num) {
-      const lastNum = parseInt(data[0].case_num.toString().replace(/\D/g, ""));
-      return isNaN(lastNum) ? "55001" : String(lastNum + 1);
-    }
-    return "55001";
-  },
-
-  async updateCaseLawyers(caseId, lawyerIds) {
-    await supabase.from("case_lawyers").delete().eq("case_id", caseId);
-    if (lawyerIds && lawyerIds.length > 0) {
-      const inserts = lawyerIds.map((lawyerId) => ({
-        case_id: caseId,
-        lawyer_id: lawyerId,
-      }));
-      const { error } = await supabase.from("case_lawyers").insert(inserts);
-      if (error) throw error;
-    }
   },
 };

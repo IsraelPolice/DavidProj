@@ -1,12 +1,12 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from "../lib/supabase.js";
 
 export const callsService = {
   async getCallsByCase(caseId) {
     const { data, error } = await supabase
-      .from('case_calls')
-      .select('*')
-      .eq('case_id', caseId)
-      .order('created_at', { ascending: false });
+      .from("case_calls")
+      .select("*")
+      .eq("case_id", caseId)
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
     return data;
@@ -14,11 +14,11 @@ export const callsService = {
 
   async createCall(caseId, content, callDate) {
     const { data, error } = await supabase
-      .from('case_calls')
+      .from("case_calls")
       .insert({
         case_id: caseId,
         content,
-        call_date: callDate
+        call_date: callDate,
       })
       .select()
       .single();
@@ -28,11 +28,8 @@ export const callsService = {
   },
 
   async deleteCall(id) {
-    const { error } = await supabase
-      .from('case_calls')
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from("case_calls").delete().eq("id", id);
 
     if (error) throw error;
-  }
+  },
 };
