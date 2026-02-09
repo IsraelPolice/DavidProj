@@ -1,7 +1,6 @@
 import { supabase } from "../lib/supabase.js";
 
 export const authService = {
-  // ... (signIn unchanged)
   async signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -14,6 +13,7 @@ export const authService = {
   async signUp(email, password, fullName, role = "lawyer", officeName = null) {
     console.log("Starting signup process...");
 
+    // 1. הרשמה למערכת ה-Auth
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -27,37 +27,39 @@ export const authService = {
       throw error;
     }
 
-    // בדיקה אם המשתמש נוצר אבל מחכה לאימות מייל (אם האופציה דלוקה)
-    if (data?.user && data?.session === null) {
+    // בדיקה אם המשתמש נוצר אבל מחכה לאימות מייל
+    if (data?.user && !data?.session) {
       console.log("User created, but needs email confirmation.");
-      // כאן אפשר להחזיר הודעה לממשק: "אנא בדוק את תיבת המייל שלך"
       return { ...data, needsConfirmation: true };
     }
 
     if (data.user) {
+      // המתנה קצרה כדי לוודא ש-Supabase סיים לעבד את המשתמש החדש
       await new Promise((resolve) => setTimeout(resolve, 1000));
       let officeId = null;
 
-      if (role === "admin" && officeName) {
-        const { data: officeData, error: officeError } = await supabase
-          .from("offices")
-          .insert({ name: officeName })
-          .select()
-          .single();
-        if (officeError) throw officeError;
-        officeId = officeData.id;
-      } else {
-        const { data: existingOffice } = await supabase
-          .from("offices")
-          .select("id")
-          .limit(1)
-          .maybeSingle();
-        if (existingOffice) officeId = existingOffice.id;
-      }
+      try {
+        // 2. טיפול במשרד
+        if (role === "admin" && officeName) {
+          const { data: officeData, error: officeError } = await supabase
+            .from("offices")
+            .insert({ name: officeName })
+            .select()
+            .single();
 
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert(
+          if (officeError) throw officeError;
+          officeId = officeData.id;
+        } else {
+          const { data: existingOffice } = await supabase
+            .from("offices")
+            .select("id")
+            .limit(1)
+            .maybeSingle();
+          if (existingOffice) officeId = existingOffice.id;
+        }
+
+        // 3. יצירת פרופיל
+        const { error: profileError } = await supabase.from("profiles").upsert(
           {
             id: data.user.id,
             user_id: data.user.id,
@@ -68,8 +70,18 @@ export const authService = {
           { onConflict: "id" },
         );
 
-      if (profileError) throw profileError;
-      console.log("Signup and Profile setup complete");
+        if (profileError) {
+          console.error(
+            "Profile creation failed, but user exists:",
+            profileError,
+          );
+        } else {
+          console.log("Signup and Profile setup complete");
+        }
+      } catch (dbError) {
+        // אם ה-Database נכשל, אנחנו לא רוצים להכשיל את כל ההרשמה
+        console.error("Database setup failed after signup:", dbError);
+      }
     }
 
     return data;
