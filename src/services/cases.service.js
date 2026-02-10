@@ -1,6 +1,37 @@
 import { supabase } from "../lib/supabase.js";
 
 export const casesService = {
+  /**
+   * שליפת תיק ספציפי לפי מזהה כולל כל הישויות הקשורות
+   */
+  async getCaseById(caseId) {
+    try {
+      const { data, error } = await supabase
+        .from("cases")
+        .select(
+          `
+          *,
+          case_type:case_types(name),
+          case_documents(*),
+          case_tasks(*),
+          case_calls(*),
+          timeline_events(*, event_files(*)),
+          case_lawyers(
+            lawyer:profiles(full_name, name)
+          )
+        `,
+        )
+        .eq("id", caseId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error("Error in getCaseById:", err);
+      throw err;
+    }
+  },
+
   async getNextCaseNumber() {
     try {
       const { data, error } = await supabase
@@ -12,8 +43,7 @@ export const casesService = {
       if (error) throw error;
 
       if (data && data.length > 0 && data[0].case_num) {
-        // מחלץ רק מספרים למקרה שיש תווים לא מספריים
-        const lastNum = parseInt(data[0].case_num.replace(/\D/g, ""));
+        const lastNum = parseInt(String(data[0].case_num).replace(/\D/g, ""));
         return isNaN(lastNum) ? "55001" : String(lastNum + 1);
       }
       return "55001";
@@ -24,25 +54,37 @@ export const casesService = {
   },
 
   async getAllCases() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return [];
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("office_id")
-      .eq("id", user.id)
-      .single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("office_id")
+        .eq("id", user.id)
+        .single();
 
-    const { data, error } = await supabase
-      .from("cases")
-      .select(`*, case_type:case_types(name), case_documents(*)`)
-      .eq("office_id", profile?.office_id)
-      .order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("cases")
+        .select(
+          `
+          *,
+          case_type:case_types(name),
+          case_documents(*),
+          case_lawyers(lawyer:profiles(full_name, name))
+        `,
+        )
+        .eq("office_id", profile?.office_id)
+        .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    return data || [];
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error("Error in getAllCases:", err);
+      return [];
+    }
   },
 
   async createCase(caseData) {
@@ -84,4 +126,18 @@ export const casesService = {
     }
     return caseResult;
   },
+
+  async updateCase(caseId, updateData) {
+    const { data, error } = await supabase
+      .from("cases")
+      .update(updateData)
+      .eq("id", caseId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
 };
+
+export default casesService;
