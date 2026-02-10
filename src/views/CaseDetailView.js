@@ -1,6 +1,5 @@
 /**
  * CaseDetailView - תצוגת פרטי תיק מלאה
- * מנהלת את תצוגת הנתונים, ציר הזמן, משימות ושיחות.
  */
 export class CaseDetailView {
   constructor(appState, navigationManager) {
@@ -8,19 +7,10 @@ export class CaseDetailView {
     this.navigationManager = navigationManager;
   }
 
-  /**
-   * פונקציית הרינדור הראשית - טוענת נתונים ומציגה את המבנה
-   */
   async render(caseId) {
-    console.log("CaseDetailView.render called with caseId:", caseId);
     const container = document.getElementById("view-container");
+    if (!container) return;
 
-    if (!container) {
-      console.error("view-container not found!");
-      return;
-    }
-
-    // מצב טעינה
     container.innerHTML = `
       <div style="padding:100px; text-align:center;">
         <div class="spinner" style="margin-bottom:20px;"></div>
@@ -29,41 +19,43 @@ export class CaseDetailView {
     `;
 
     try {
-      // טעינת הנתונים מה-AppState
       await this.appState.loadCaseById(caseId);
       const c = this.appState.currentCase;
 
       if (!c) {
-        console.warn("Case not found");
-        container.innerHTML = `
-          <div style="padding:100px; text-align:center;">
-            <i class="fas fa-search" style="font-size:48px; color:var(--text-gray); opacity:0.3;"></i>
-            <h3 style="margin-top:20px;">תיק לא נמצא</h3>
-            <button class="btn-new" onclick="window.navigationManager.backToCases()" style="margin-top:20px;">חזרה לרשימה</button>
-          </div>
-        `;
+        this.renderNotFound(container);
         return;
       }
 
       this.renderContent(c);
     } catch (error) {
       console.error("Error rendering case detail:", error);
-      container.innerHTML = `
-        <div style="padding:100px; text-align:center;">
-          <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#ef4444; margin-bottom:20px;"></i>
-          <h3>שגיאה בטעינת התיק</h3>
-          <p style="color:#64748b; margin-top:10px;">${error.message}</p>
-          <button class="btn-new" onclick="window.navigationManager.backToCases()" style="margin-top:20px;">חזרה לרשימת התיקים</button>
-        </div>
-      `;
+      this.renderError(container, error.message);
     }
   }
 
-  /**
-   * בניית ה-HTML של תוכן התיק
-   */
+  renderNotFound(container) {
+    container.innerHTML = `
+      <div style="padding:100px; text-align:center;">
+        <i class="fas fa-search" style="font-size:48px; color:var(--text-gray); opacity:0.3;"></i>
+        <h3 style="margin-top:20px;">תיק לא נמצא</h3>
+        <button class="btn-new" onclick="window.navigationManager.backToCases()" style="margin-top:20px;">חזרה לרשימה</button>
+      </div>
+    `;
+  }
+
+  renderError(container, message) {
+    container.innerHTML = `
+      <div style="padding:100px; text-align:center;">
+        <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#ef4444; margin-bottom:20px;"></i>
+        <h3>שגיאה בטעינת התיק</h3>
+        <p style="color:#64748b; margin-top:10px;">${message}</p>
+        <button class="btn-new" onclick="window.navigationManager.backToCases()" style="margin-top:20px;">חזרה לרשימה</button>
+      </div>
+    `;
+  }
+
   renderContent(c) {
-    // הגנות מפני ערכים ריקים (מונע מסך לבן)
     const fullName =
       `${c.first_name || ""} ${c.last_name || ""}`.trim() ||
       c.title ||
@@ -74,12 +66,10 @@ export class CaseDetailView {
         .filter(Boolean)
         .join(", ") || "לא מונה";
 
-    // וידוא שכל המערכים קיימים לפני סינון/רינדור
     const timeline = c.timeline_events || [];
     const medicalEvents = timeline.filter((e) => e.event_type === "medical");
     const legalEvents = timeline.filter((e) => e.event_type === "legal");
     const tasks = c.case_tasks || [];
-    const calls = c.case_calls || [];
     const docs = c.case_documents || [];
 
     const container = document.getElementById("view-container");
@@ -94,11 +84,10 @@ export class CaseDetailView {
             <h1 class="page-title">${fullName}</h1>
             <div class="case-meta-info">
               <span><strong>תיק משרד:</strong> ${c.case_num || "-"}</span>
-              <span><strong>ת.א:</strong> ${c.ta_num || "-"}</span>
-              <span><strong>נפתח ב:</strong> ${c.open_date || "-"}</span>
+              <span><strong>נפתח ב:</strong> ${c.open_date ? new Date(c.open_date).toLocaleDateString("he-IL") : "-"}</span>
             </div>
           </div>
-          <div style="display:flex; gap:10px; align-items: center;">
+          <div>
             <select id="detail-status-select" class="status-select status-${c.status || "open"}">
               <option value="open" ${c.status === "open" ? "selected" : ""}>פתוח</option>
               <option value="process" ${c.status === "process" ? "selected" : ""}>בטיפול</option>
@@ -141,9 +130,7 @@ export class CaseDetailView {
 
     this.attachEventListeners();
   }
-  /**
-   * חיבור אירועים לאלמנטים ב-DOM לאחר הרינדור
-   */
+
   attachEventListeners() {
     document.getElementById("btn-back")?.addEventListener("click", () => {
       this.navigationManager.backToCases();
@@ -155,41 +142,24 @@ export class CaseDetailView {
         const c = this.appState.currentCase;
         try {
           await this.appState.updateCase(c.id, { status: e.target.value });
-          // עדכון צבע הסלקט ללא רינדור מחדש של הכל (אופציונלי)
           e.target.className = `status-select status-${e.target.value}`;
         } catch (err) {
           alert("שגיאה בעדכון הסטטוס");
         }
       });
-
-    document.getElementById("btn-merge-docs")?.addEventListener("click", () => {
-      alert("פונקציונליות מיזוג והפקת חוברת - בפיתוח");
-    });
-
-    document
-      .getElementById("chat-bubble-btn")
-      ?.addEventListener("click", () => {
-        if (window.chatManager) {
-          window.chatManager.openChat();
-        } else {
-          alert("מערכת ה-Chat לא זמינה כרגע");
-        }
-      });
   }
 
-  /**
-   * עזר לרינדור רשימת משימות
-   */
   renderTasksList(tasks) {
-    if (!tasks.length) return '<li class="empty-list">אין משימות</li>';
+    if (!tasks || !tasks.length)
+      return '<li class="empty-list">אין משימות</li>';
     return tasks
       .map(
         (t) => `
-      <li class="task-item task-urgent-${t.urgency || "low"} ${t.done ? "task-done" : ""}">
+      <li class="task-item ${t.done ? "task-done" : ""}">
         <div class="task-left">
-          <input type="checkbox" class="task-checkbox" ${t.done ? "checked" : ""} onchange="console.log('Task toggled')">
+          <input type="checkbox" class="task-checkbox" ${t.done ? "checked" : ""}>
           <div class="task-content">
-            <span class="task-text">${t.text}</span>
+            <span class="task-text">${t.text || t.title}</span>
             ${t.deadline ? `<div class="task-details-row"><span class="task-deadline"><i class="far fa-calendar"></i> ${new Date(t.deadline).toLocaleDateString("he-IL")}</span></div>` : ""}
           </div>
         </div>
@@ -199,29 +169,8 @@ export class CaseDetailView {
       .join("");
   }
 
-  /**
-   * עזר לרינדור יומן שיחות
-   */
-  renderCallsList(calls) {
-    if (!calls.length) return '<li class="empty-list">אין שיחות מתועדות</li>';
-    return calls
-      .slice(0, 5)
-      .map(
-        (call) => `
-      <li class="call-log-item">
-        <div class="call-meta">${call.call_date}</div>
-        <div class="call-content">${call.content}</div>
-      </li>
-    `,
-      )
-      .join("");
-  }
-
-  /**
-   * עזר לרינדור סטטוס מסמכים
-   */
   renderDocsList(docs) {
-    if (!docs.length) return '<li class="empty-list">אין מסמכים</li>';
+    if (!docs || !docs.length) return '<li class="empty-list">אין מסמכים</li>';
     const getBadgeInfo = (status) => {
       if (status === "signed") return { class: "badge-signed", text: "חתום" };
       if (status === "sent") return { class: "badge-sent", text: "נשלח" };
@@ -233,7 +182,7 @@ export class CaseDetailView {
         const badge = getBadgeInfo(doc.status);
         return `
         <li class="doc-status-item">
-          <span class="doc-name">${doc.doc_name}</span>
+          <span class="doc-name">${doc.doc_name || doc.name}</span>
           <span class="doc-badge ${badge.class}">${badge.text}</span>
         </li>
       `;
@@ -241,11 +190,9 @@ export class CaseDetailView {
       .join("");
   }
 
-  /**
-   * עזר לרינדור ציר זמן (משמש גם למדיקלי וגם למשפטי)
-   */
   renderTimeline(events) {
-    if (!events.length) return '<div class="empty-timeline">אין אירועים</div>';
+    if (!events || !events.length)
+      return '<div class="empty-timeline">אין אירועים</div>';
 
     return [...events]
       .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
@@ -272,7 +219,7 @@ export class CaseDetailView {
             <div class="timeline-content">
               <div class="timeline-title">${event.title}</div>
               ${event.description ? `<div class="timeline-desc">${event.description}</div>` : ""}
-              ${filesHtml ? `<div class="timeline-actions"><div class="attached-files">${filesHtml}</div></div>` : ""}
+              ${filesHtml ? `<div class="attached-files">${filesHtml}</div>` : ""}
             </div>
           </div>
         `;
