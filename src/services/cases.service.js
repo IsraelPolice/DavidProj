@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase.js";
 
-export const casesService = {
-  // פונקציה לקבלת המספר הבא - וודא שהיא כתובה בדיוק כך
+// הגדרת האובייקט
+const casesService = {
   async getNextCaseNumber() {
     try {
       const { data, error } = await supabase
@@ -19,7 +19,7 @@ export const casesService = {
       return "55001";
     } catch (err) {
       console.error("Error in getNextCaseNumber:", err);
-      return "55001"; // ברירת מחדל במקרה תקלה
+      return "55001";
     }
   },
 
@@ -37,13 +37,7 @@ export const casesService = {
 
     const { data, error } = await supabase
       .from("cases")
-      .select(
-        `
-        *,
-        case_type:case_types(name),
-        case_documents(*)
-      `,
-      )
+      .select(`*, case_type:case_types(name), case_documents(*)`)
       .eq("office_id", profile?.office_id)
       .order("created_at", { ascending: false });
 
@@ -81,7 +75,6 @@ export const casesService = {
 
     if (caseError) throw caseError;
 
-    // הוספת עורכי דין לתיק
     if (caseData.lawyerIds?.length > 0) {
       const lawyerInserts = caseData.lawyerIds.map((id) => ({
         case_id: caseResult.id,
@@ -89,7 +82,10 @@ export const casesService = {
       }));
       await supabase.from("case_lawyers").insert(lawyerInserts);
     }
-
     return caseResult;
   },
 };
+
+// ייצוא כפול כדי למנוע שגיאות ייבוא
+export { casesService };
+export default casesService;
