@@ -63,15 +63,24 @@ export class CaseDetailView {
    * בניית ה-HTML של תוכן התיק
    */
   renderContent(c) {
-    const fullName = `${c.first_name || ""} ${c.last_name || ""}`.trim();
+    // הגנות מפני ערכים ריקים (מונע מסך לבן)
+    const fullName =
+      `${c.first_name || ""} ${c.last_name || ""}`.trim() ||
+      c.title ||
+      "תיק ללא שם";
     const lawyerNames =
-      c.case_lawyers?.map((cl) => cl.lawyer.name).join(", ") || "-";
+      c.case_lawyers
+        ?.map((cl) => cl.lawyer?.full_name || cl.lawyer?.name)
+        .filter(Boolean)
+        .join(", ") || "לא מונה";
 
-    // חלוקת אירועים לציר זמן
-    const medicalEvents =
-      c.timeline_events?.filter((e) => e.event_type === "medical") || [];
-    const legalEvents =
-      c.timeline_events?.filter((e) => e.event_type === "legal") || [];
+    // וידוא שכל המערכים קיימים לפני סינון/רינדור
+    const timeline = c.timeline_events || [];
+    const medicalEvents = timeline.filter((e) => e.event_type === "medical");
+    const legalEvents = timeline.filter((e) => e.event_type === "legal");
+    const tasks = c.case_tasks || [];
+    const calls = c.case_calls || [];
+    const docs = c.case_documents || [];
 
     const container = document.getElementById("view-container");
     container.innerHTML = `
@@ -84,16 +93,13 @@ export class CaseDetailView {
           <div>
             <h1 class="page-title">${fullName}</h1>
             <div class="case-meta-info">
-              <span><strong>תיק משרד:</strong> ${c.case_num}</span>
+              <span><strong>תיק משרד:</strong> ${c.case_num || "-"}</span>
               <span><strong>ת.א:</strong> ${c.ta_num || "-"}</span>
               <span><strong>נפתח ב:</strong> ${c.open_date || "-"}</span>
             </div>
           </div>
           <div style="display:flex; gap:10px; align-items: center;">
-            <button class="btn-new" id="btn-merge-docs">
-              <i class="far fa-file-pdf"></i> מיזוג והפקת חוברת
-            </button>
-            <select id="detail-status-select" class="status-select status-${c.status}">
+            <select id="detail-status-select" class="status-select status-${c.status || "open"}">
               <option value="open" ${c.status === "open" ? "selected" : ""}>פתוח</option>
               <option value="process" ${c.status === "process" ? "selected" : ""}>בטיפול</option>
               <option value="closed" ${c.status === "closed" ? "selected" : ""}>סגור</option>
@@ -104,74 +110,37 @@ export class CaseDetailView {
         <div class="details-grid">
           <div class="left-col">
             <div class="section-card">
-              <div class="section-title">
-                <span>ציר זמן רפואי</span>
-                <i class="fas fa-heartbeat" style="color:#10b981;"></i>
-              </div>
-              <div class="timeline-container">
-                ${this.renderTimeline(medicalEvents)}
-              </div>
+              <div class="section-title"><span>ציר זמן רפואי</span> <i class="fas fa-heartbeat"></i></div>
+              <div class="timeline-container">${this.renderTimeline(medicalEvents)}</div>
             </div>
-
             <div class="section-card">
-              <div class="section-title">
-                <span>ציר זמן משפטי</span>
-                <i class="fas fa-gavel" style="color:#6366f1;"></i>
-              </div>
-              <div class="timeline-container">
-                ${this.renderTimeline(legalEvents)}
-              </div>
+              <div class="section-title"><span>ציר זמן משפטי</span> <i class="fas fa-gavel"></i></div>
+              <div class="timeline-container">${this.renderTimeline(legalEvents)}</div>
             </div>
           </div>
 
           <div class="right-col">
             <div class="section-card">
               <div class="section-title">פרטי לקוח</div>
-              <div class="info-row"><span class="info-label">ת.ז:</span><span class="info-val">${c.tz || "-"}</span></div>
-              <div class="info-row"><span class="info-label">קופת חולים:</span><span class="info-val">${c.hmo || "-"}</span></div>
-              <div class="info-row"><span class="info-label">טלפון:</span><span class="info-val">${c.phone || "-"}</span></div>
-              <div class="info-row"><span class="info-label">כתובת:</span><span class="info-val">${c.street || ""} ${c.city || ""}</span></div>
-              <div class="info-row"><span class="info-label">עו"ד מטפל:</span><span class="info-val">${lawyerNames}</span></div>
+              <div class="info-row"><span class="info-label">ת.ז:</span><span>${c.tz || "-"}</span></div>
+              <div class="info-row"><span class="info-label">טלפון:</span><span>${c.phone || "-"}</span></div>
+              <div class="info-row"><span class="info-label">עו"ד מטפל:</span><span>${lawyerNames}</span></div>
             </div>
-
             <div class="section-card">
-              <div class="section-title">
-                משימות ומעקב
-                <span class="counter-badge">${c.case_tasks?.filter((t) => !t.done).length || 0}</span>
-              </div>
-              <ul class="task-list">
-                ${this.renderTasksList(c.case_tasks || [])}
-              </ul>
+              <div class="section-title">משימות <span class="counter-badge">${tasks.filter((t) => !t.done).length}</span></div>
+              <ul class="task-list">${this.renderTasksList(tasks)}</ul>
             </div>
-
-            <div class="section-card">
-              <div class="section-title">
-                תיעוד שיחות
-                <span class="counter-badge">${c.case_calls?.length || 0}</span>
-              </div>
-              <ul class="call-log-list">
-                ${this.renderCallsList(c.case_calls || [])}
-              </ul>
-            </div>
-
-            <div class="section-card">
-              <div class="section-title">סטטוס מסמכי ייצוג</div>
-              <ul class="docs-status-list">
-                ${this.renderDocsList(c.case_documents || [])}
-              </ul>
+             <div class="section-card">
+              <div class="section-title">מסמכים</div>
+              <ul class="docs-status-list">${this.renderDocsList(docs)}</ul>
             </div>
           </div>
         </div>
-
-        <button class="chat-bubble-btn" id="chat-bubble-btn" title="שאל את התיק (AI)">
-          <i class="fas fa-comment-dots"></i>
-        </button>
       </div>
     `;
 
     this.attachEventListeners();
   }
-
   /**
    * חיבור אירועים לאלמנטים ב-DOM לאחר הרינדור
    */
