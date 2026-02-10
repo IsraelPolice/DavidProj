@@ -1,7 +1,6 @@
 import { supabase } from "../lib/supabase.js";
 
-// הגדרת האובייקט
-const casesService = {
+export const casesService = {
   async getNextCaseNumber() {
     try {
       const { data, error } = await supabase
@@ -13,7 +12,8 @@ const casesService = {
       if (error) throw error;
 
       if (data && data.length > 0 && data[0].case_num) {
-        const lastNum = parseInt(data[0].case_num);
+        // מחלץ רק מספרים למקרה שיש תווים לא מספריים
+        const lastNum = parseInt(data[0].case_num.replace(/\D/g, ""));
         return isNaN(lastNum) ? "55001" : String(lastNum + 1);
       }
       return "55001";
@@ -85,7 +85,3 @@ const casesService = {
     return caseResult;
   },
 };
-
-// ייצוא כפול כדי למנוע שגיאות ייבוא
-export { casesService };
-export default casesService;
